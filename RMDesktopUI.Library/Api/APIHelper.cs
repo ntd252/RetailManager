@@ -1,4 +1,5 @@
-﻿using RMDesktopUI.Models;
+﻿using RMDesktopUI.Library.Models;
+using RMDesktopUI.Models;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -8,15 +9,17 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RMDesktopUI.Helpers
+namespace RMDesktopUI.Library.Api
 {
     public class APIHelper : IAPIHelper
     {
-        public HttpClient apiClient { get; set; }
+        private HttpClient apiClient;
+        private readonly ILoggedInUserModel _loggedInUer;
 
-        public APIHelper()
+        public APIHelper(ILoggedInUserModel loggedInUer)
         {
             InitializeClient();
+            _loggedInUer = loggedInUer;
         }
 
         private void InitializeClient()
@@ -44,6 +47,32 @@ namespace RMDesktopUI.Helpers
                 {
                     var result = await response.Content.ReadAsAsync<AuthenticatedUser>();
                     return result;
+                }
+                else
+                {
+                    throw new Exception(response.ReasonPhrase);
+                }
+            }
+        }
+
+        public async Task GetLoggedInUserInfo(string token)
+        {
+            apiClient.DefaultRequestHeaders.Clear();
+            apiClient.DefaultRequestHeaders.Accept.Clear();
+            apiClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            apiClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+            using (HttpResponseMessage response = await apiClient.GetAsync("/api/User"))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadAsAsync<LoggedInUserModel>();
+                    _loggedInUer.CreatedDate = result.CreatedDate;
+                    _loggedInUer.EmailAddress = result.EmailAddress;
+                    _loggedInUer.FirstName = result.FirstName;
+                    _loggedInUer.Id = result.Id;
+                    _loggedInUer.LastName = result.LastName;
+                    _loggedInUer.Token = token;
                 }
                 else
                 {
